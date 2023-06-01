@@ -137,7 +137,7 @@ int main()
     size_t count = outputTensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
     std::vector<float> output(rawOutput, rawOutput + count);
 
-    for (int i = 0; i < outputShape[0]; i++) {
+    for (int i = 0; i < outputShape[0]; ++i) {
 
         float confidence        = output[i * outputShape[1] + 0];
         float x1                = output[i * outputShape[1] + 1];
