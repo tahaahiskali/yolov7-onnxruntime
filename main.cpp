@@ -105,7 +105,7 @@ int main()
 
     std::vector<int64_t> inputDims = session.GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
 
-	model_input_height = inputDims.at(3);
+    model_input_height = inputDims.at(3);
     model_input_width = inputDims.at(2);
 
     cv::Mat inputImage = preprocess(image);
