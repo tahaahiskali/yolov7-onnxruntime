@@ -9,13 +9,16 @@
 
 using namespace cv;
 
-cv::Mat preprocess(const cv::Mat& image, int inputWidth, int inputHeight) {
+int model_input_width;
+int model_input_height;
+
+cv::Mat preprocess( cv::Mat& image ) {
 
     // Channels order: BGR to RGB
     cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
 
     cv::Mat resizedImage;
-    cv::resize(image, resizedImage, cv::Size(inputWidth, inputHeight));
+    cv::resize(image, resizedImage, cv::Size(model_input_width, model_input_height));
 
     // Convert image to float32 and normalize
     cv::Mat floatImage;
@@ -33,10 +36,10 @@ void drawBoundingBox(cv::Mat& image, float x1, float y1, float x2, float y2, std
     if( acc > 0.6 ) { // Threshold, can be made function parameter
 
         // Coords should be scaled to the original image. The coords from the model are relative to the model's input height and width.
-        x1 = (x1 / 640) * image.cols;
-        x2 = (x2 / 640) * image.cols;
-        y1 = (y1 / 640) * image.rows;
-        y2 = (y2 / 640) * image.rows;
+        x1 = (x1 / model_input_width) * image.cols;
+        x2 = (x2 / model_input_width) * image.cols;
+        y1 = (y1 / model_input_height) * image.rows;
+        y2 = (y2 / model_input_height) * image.rows;
 
         cv::rectangle(image, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 255, 0), 2);
 
@@ -108,7 +111,10 @@ int main()
 
     std::vector<int64_t> inputDims = session.GetInputTypeInfo(0).GetTensorTypeAndShapeInfo().GetShape();
 
-    cv::Mat inputImage = preprocess(image, inputDims.at(3), inputDims.at(2) );
+	model_input_height = inputDims.at(3);
+    model_input_width = inputDims.at(2);
+
+    cv::Mat inputImage = preprocess(image);
 
     Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
                 OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
