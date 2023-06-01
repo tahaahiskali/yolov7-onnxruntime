@@ -42,7 +42,7 @@ void drawBoundingBox(cv::Mat& image, float x1, float y1, float x2, float y2, std
                     0.8, cv::Scalar(255, 255, 255), 2);
 
         cv::putText(image, std::to_string(acc),
-        cv::Point(x1, y1+30), cv::FONT_ITALIC,
+                    cv::Point(x1, y1+30), cv::FONT_ITALIC,
                     0.8, cv::Scalar(255, 255, 0), 2);
     }
 
