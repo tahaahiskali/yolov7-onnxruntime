@@ -3,8 +3,41 @@
 
 #include <iostream>
 
+typedef struct Result {
+    int x1;
+    int x2;
+    int y1;
+    int y2;
+    int obj_id;
+    float accuracy;
+
+    Result(int x1_, int x2_, int y1_, int y2_, int obj_id_, float accuracy_) {
+       x1 = x1_;
+       x2 = x2_;
+       y1 = y1_;
+       y2 = y2_;
+       obj_id = obj_id_;
+       accuracy = accuracy_;
+   }
+
+} result_t ;
+
 int model_input_width;
 int model_input_height;
+
+// Class names for YOLOv7
+std::vector<std::string> classNames = {
+    "person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
+    "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
+    "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
+    "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
+    "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
+    "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+    "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
+    "sofa", "potted plant", "bed", "dining table", "toilet", "tv monitor", "laptop", "mouse",
+    "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
+    "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
+};
 
 cv::Mat preprocess( cv::Mat& image ) {
 
@@ -24,46 +57,69 @@ cv::Mat preprocess( cv::Mat& image ) {
     return blobImage;
 }
 
-void drawBoundingBox(cv::Mat& image, float x1, float y1, float x2, float y2, std::string label, float acc )
+std::vector<Result> postprocess( cv::Size originalImageSize, std::vector<Ort::Value>& outputTensors )
 {
+    auto* rawOutput = outputTensors[0].GetTensorData<float>();
+    std::vector<int64_t> outputShape = outputTensors[0].GetTensorTypeAndShapeInfo().GetShape();
+    size_t count = outputTensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
+    std::vector<float> output(rawOutput, rawOutput + count);
 
-    if( acc > 0.6 ) { // Threshold, can be made function parameter
+    std::vector<Result> resultVector;
+
+    for (int i = 0; i < outputShape[0]; i++) {
+
+        float confidence        = output[i * outputShape[1] + 0];
+        float x1                = output[i * outputShape[1] + 1];
+        float y1                = output[i * outputShape[1] + 2];
+        float x2                = output[i * outputShape[1] + 3];
+        float y2                = output[i * outputShape[1] + 4];
+        int classPrediction     = output[i * outputShape[1] + 5];
+        float accuracy          = output[i * outputShape[1] + 6];
+
+        (void) confidence;
+
+        std::cout << "Class Name: " << classNames.at(classPrediction) << std::endl;
+        std::cout << "Coords: Top Left (" << x1 << ", " << y1 << "), Bottom Right (" << x2 << ", " << y2 << ")" << std::endl;
+        std::cout << "Accuracy: " << accuracy << std::endl;
 
         // Coords should be scaled to the original image. The coords from the model are relative to the model's input height and width.
-        x1 = (x1 / model_input_width) * image.cols;
-        x2 = (x2 / model_input_width) * image.cols;
-        y1 = (y1 / model_input_height) * image.rows;
-        y2 = (y2 / model_input_height) * image.rows;
+        x1 = (x1 / model_input_width) * originalImageSize.width;
+        x2 = (x2 / model_input_width) * originalImageSize.width;
+        y1 = (y1 / model_input_height) * originalImageSize.height;
+        y2 = (y2 / model_input_height) * originalImageSize.height;
 
-        cv::rectangle(image, cv::Point(x1, y1), cv::Point(x2, y2), cv::Scalar(0, 255, 0), 2);
+        Result result( x1, x2, y1, y2, classPrediction, accuracy);
 
-        cv::putText(image, label,
-                    cv::Point(x1, y1 - 3), cv::FONT_ITALIC,
-                    0.8, cv::Scalar(255, 255, 255), 2);
+        resultVector.push_back( result );
 
-        cv::putText(image, std::to_string(acc),
-                    cv::Point(x1, y1+30), cv::FONT_ITALIC,
-                    0.8, cv::Scalar(255, 255, 0), 2);
+        std::cout << std::endl;
+    }
+
+    return resultVector;
+}
+
+void drawBoundingBox(cv::Mat& image, std::vector<Result>& resultVector )
+{
+
+    for( auto result : resultVector ) {
+        if( result.accuracy > 0.6 ) {
+
+            cv::rectangle(image, cv::Point(result.x1, result.y1), cv::Point(result.x2, result.y2), cv::Scalar(0, 255, 0), 2);
+
+            cv::putText(image, classNames.at( result.obj_id ),
+                        cv::Point(result.x1, result.y1 - 3), cv::FONT_ITALIC,
+                        0.8, cv::Scalar(255, 255, 255), 2);
+
+            cv::putText(image, std::to_string(result.accuracy),
+                        cv::Point(result.x1, result.y1+30), cv::FONT_ITALIC,
+                        0.8, cv::Scalar(255, 255, 0), 2);
+        }
     }
 
 }
 
-
 int main()
 {
-    // Class names for YOLOv7
-    std::vector<std::string> classNames = {
-        "person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",
-        "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat",
-        "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack",
-        "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball",
-        "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket",
-        "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-        "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair",
-        "sofa", "potted plant", "bed", "dining table", "toilet", "tv monitor", "laptop", "mouse",
-        "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator",
-        "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"
-    };
 
     const char* model_path = "model/yolov7-tiny.onnx";
 
@@ -126,31 +182,9 @@ int main()
                                                         output_node_names.data(),
                                                         num_output_nodes);
 
-    auto* rawOutput = outputTensors[0].GetTensorData<float>();
-    std::vector<int64_t> outputShape = outputTensors[0].GetTensorTypeAndShapeInfo().GetShape();
-    size_t count = outputTensors[0].GetTensorTypeAndShapeInfo().GetElementCount();
-    std::vector<float> output(rawOutput, rawOutput + count);
+    std::vector<Result> resultVector = postprocess( image.size(), outputTensors );
 
-    for (int i = 0; i < outputShape[0]; ++i) {
-
-        float confidence        = output[i * outputShape[1] + 0];
-        float x1                = output[i * outputShape[1] + 1];
-        float y1                = output[i * outputShape[1] + 2];
-        float x2                = output[i * outputShape[1] + 3];
-        float y2                = output[i * outputShape[1] + 4];
-        int classPrediction     = output[i * outputShape[1] + 5];
-        float accuracy          = output[i * outputShape[1] + 6];
-
-        (void) confidence;
-
-        std::cout << "Class Name: " << classNames.at(classPrediction) << std::endl;
-        std::cout << "Coords: Top Left (" << x1 << ", " << y1 << "), Bottom Right (" << x2 << ", " << y2 << ")" << std::endl;
-        std::cout << "Accuracy: " << accuracy << std::endl;
-
-        drawBoundingBox(image, x1, y1, x2, y2, classNames.at(classPrediction), accuracy );
-
-        std::cout << std::endl;
-    }
+    drawBoundingBox(image, resultVector );
 
     // Display the image with detections
     cv::imshow("Object Detection", image);
