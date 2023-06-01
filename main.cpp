@@ -102,7 +102,8 @@ void drawBoundingBox(cv::Mat& image, std::vector<Result>& resultVector )
 {
 
     for( auto result : resultVector ) {
-        if( result.accuracy > 0.6 ) {
+
+        if( result.accuracy > 0.6 ) { // Threshold, can be made function parameter
 
             cv::rectangle(image, cv::Point(result.x1, result.y1), cv::Point(result.x2, result.y2), cv::Scalar(0, 255, 0), 2);
 
