@@ -1,13 +1,7 @@
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/opencv.hpp>
-#include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/highgui.hpp>
 
 #include <iostream>
-#include <memory>
-
-using namespace cv;
 
 int model_input_width;
 int model_input_height;
