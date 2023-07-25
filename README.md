@@ -8,7 +8,7 @@ To make the program more flexible, args etc. You can pull request for features.
 
 **Environments**
 
-_Ubuntu 18.04.6 LTS
-CUDA 11.4
-ONNXRuntime 1.12_
+_Ubuntu 18.04.6 LTS_
+_CUDA 11.4_
+_ONNXRuntime 1.12_
 
