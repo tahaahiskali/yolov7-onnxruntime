@@ -24,6 +24,10 @@ typedef struct Result {
 
 int model_input_width;
 int model_input_height;
+int pad_size_y;
+int pad_size_x;
+int model_width_after_padding;
+int model_height_after_padding;
 
 // Class names for YOLOv7
 std::vector<std::string> classNames = {
@@ -44,15 +48,38 @@ cv::Mat preprocess( cv::Mat& image ) {
     // Channels order: BGR to RGB
     cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
 
-    cv::Mat resizedImage;
-    cv::resize(image, resizedImage, cv::Size(model_input_width, model_input_height));
+    // Calculate the scaling factor for resizing without distortion
+    double scale;
+    if (image.cols / static_cast<double>(image.rows) > model_input_width / static_cast<double>(model_input_height)) {
+        scale = model_input_width / static_cast<double>(image.cols);
+    } else {
+        scale = model_input_height / static_cast<double>(image.rows);
+    }
 
+    // Resize the image with keeping the aspect ratio
+    cv::Mat resizedImage;
+    cv::resize(image, resizedImage, cv::Size(), scale, scale);
+
+    model_height_after_padding = resizedImage.size[0];
+    model_width_after_padding = resizedImage.size[1];
+    // Create a blank canvas with the desired model input size
+    cv::Mat paddedImage = cv::Mat::zeros(model_input_height, model_input_width, resizedImage.type());
+
+    // Calculate the position to paste the resized image
+    int x_offset = (paddedImage.cols - resizedImage.cols) / 2;
+    int y_offset = (paddedImage.rows - resizedImage.rows) / 2;
+    pad_size_y = y_offset;
+    pad_size_x = x_offset;
+
+    // Copy the resized image to the center of the canvas
+    resizedImage.copyTo(paddedImage(cv::Rect(x_offset, y_offset, resizedImage.cols, resizedImage.rows)));
     // Convert image to float32 and normalize
     cv::Mat floatImage;
-    resizedImage.convertTo(floatImage, CV_32F, 1.0 / 255.0);
+    paddedImage.convertTo(floatImage, CV_32F, 1.0 / 255.0);
 
     // Create a 4-dimensional blob from the image
     cv::Mat blobImage = cv::dnn::blobFromImage(floatImage);
+
 
     return blobImage;
 }
@@ -83,10 +110,10 @@ std::vector<Result> postprocess( cv::Size originalImageSize, std::vector<Ort::Va
         std::cout << "Accuracy: " << accuracy << std::endl;
 
         // Coords should be scaled to the original image. The coords from the model are relative to the model's input height and width.
-        x1 = (x1 / model_input_width) * originalImageSize.width;
-        x2 = (x2 / model_input_width) * originalImageSize.width;
-        y1 = (y1 / model_input_height) * originalImageSize.height;
-        y2 = (y2 / model_input_height) * originalImageSize.height;
+        x1 = ((x1- pad_size_x)  / model_width_after_padding) * originalImageSize.width ;
+        x2 = ((x2- pad_size_x) / model_width_after_padding) * originalImageSize.width ;
+        y1 = ((y1 - pad_size_y) / model_height_after_padding) * originalImageSize.height ;
+        y2 = ((y2 - pad_size_y) / model_height_after_padding) * originalImageSize.height ;
 
         Result result( x1, x2, y1, y2, classPrediction, accuracy);
 
