@@ -1,7 +1,7 @@
 # yolov7-onnxruntime
 YOLOv7 ONNX Runtime C++ inference code
 
-To run code:
+**To run code:**
 ```
 make
 ./yolov7-onnxruntime
@@ -11,10 +11,10 @@ make
 To make the program more flexible, args etc. You can pull request for features.
 
 
-**Environments**
-
-_Ubuntu 18.04.6 LTS_  
-_CUDA 11.4_  
-_ONNXRuntime 1.12_  
-_OpenCV 4.1_ ( Any version with dnn module ) 
-
+**Environments:**
+```
+Ubuntu 20.04.6 LTS  
+CUDA 12.1  
+ONNXRuntime 1.12  
+OpenCV 4.2.0 ( Any version with dnn module ) 
+```
